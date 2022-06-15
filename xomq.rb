@@ -35,25 +35,55 @@ def post_headers
   }
 end
 
+def each_body_line(resp)
+  knob = ''
+  resp.read_body do |chunk|
+    *nuggets, new_knob = chunk.split("\n", -1)
+    if nuggets.empty?
+      knob << new_knob
+      next
+    end
+
+    nuggets.first.prepend(knob)
+    nuggets.each { |nugget| yield nugget }
+    knob = new_knob
+  end
+  yield knob unless knob.empty?
+end
+
+
 uri = URI(query_url)
+use_ssl = uri.is_a?(URI::HTTPS)
 
 stats = Hash.new { |h, k| h[k] = Set.new }
 
 begin
-  result = Net::HTTP.post(uri, request_body, post_headers)
-  result.body.each_line do |line|
-    data = line.match(REPORT_REGEX)
+  Net::HTTP.start(uri.host, uri.port, use_ssl: use_ssl) do |http|
+    request = Net::HTTP::Post.new(uri, post_headers)
+    request.body = request_body
 
-    unless data
-      $stderr.puts "bad string ignored: #{line.strip}"
-      next
+    http.request request do |response|
+      unless response.code == '200'
+        $stderr.puts "something happened:: #{response.message}"
+        puts response.inspect
+        exit 1
+      end
+
+      each_body_line(response) do |line|
+        data = line.match(REPORT_REGEX)
+
+        unless data
+          $stderr.puts "bad string ignored: #{line.strip}"
+          next
+        end
+
+        path = data[:path]
+        ip = IPAddr.new(data[:ip]).to_i
+        stats[path] << ip
+      rescue IPAddr::InvalidAddressError
+        $stderr.puts "bad ip ignored: #{line.strip}"
+      end
     end
-
-    path = data[:path]
-    ip = IPAddr.new(data[:ip]).to_i
-    stats[path] << ip
-  rescue IPAddr::InvalidAddressError
-    $stderr.puts "bad ip ignored: #{line.strip}"
   end
 rescue => e
   $stderr.puts "something happened: #{e}"
