@@ -68,6 +68,35 @@ class XomqLoader
     @config = config
   end
 
+  def each_line
+    knob = nil
+
+    fetch do |chunk|
+      prev_nugget = nil
+      chunk.split("\n", -1) do |nugget|
+        if knob
+          prev_nugget = knob << nugget
+          knob = nil
+          next
+        end
+
+        yield prev_nugget if prev_nugget
+        prev_nugget = nugget
+      end
+
+      knob = prev_nugget
+    end
+
+    yield knob unless knob.empty?
+  end
+
+  def reset!
+    @access_token = nil
+    @nonce = nil
+  end
+
+  private
+
   def nonce
     @nonce ||= SecureRandom.hex(6)
   end
@@ -99,11 +128,6 @@ class XomqLoader
     uri.is_a?(URI::HTTPS)
   end
 
-  def reset!
-    @access_token = nil
-    @nonce = nil
-  end
-
   def fetch
     Net::HTTP.start(uri.host, uri.port, use_ssl: use_ssl?) do |http|
       request = Net::HTTP::Post.new(uri, post_headers)
@@ -117,28 +141,6 @@ class XomqLoader
         reset!
       end
     end
-  end
-
-  def each_line
-    knob = nil
-
-    fetch do |chunk|
-      prev_nugget = nil
-      chunk.split("\n", -1) do |nugget|
-        if knob
-          prev_nugget = knob << nugget
-          knob = nil
-          next
-        end
-
-        yield prev_nugget if prev_nugget
-        prev_nugget = nugget
-      end
-
-      knob = prev_nugget
-    end
-
-    yield knob unless knob.empty?
   end
 end
 
