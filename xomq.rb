@@ -69,6 +69,8 @@ class XomqLoader
   end
 
   def each_line
+    return enum_for(:each_line) unless block_given?
+
     knob = nil
 
     fetch do |chunk|
