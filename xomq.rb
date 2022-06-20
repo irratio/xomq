@@ -139,10 +139,10 @@ class XomqLoader
         raise HTTPError.new("#{response.code} #{response.message}") unless response.is_a?(Net::HTTPSuccess)
 
         response.read_body { |chunk| yield chunk }
-      ensure
-        reset!
       end
     end
+  ensure
+    reset!
   end
 end
 
