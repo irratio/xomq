@@ -9,9 +9,9 @@ describe XomqConfig do
   describe 'when data provided' do
     let(:config) { XomqConfig.new(secret_key: 'key', query_url: 'http://example.com/reports') }
 
-    it('is filled') { assert(config.filled?) }
+    it('is filled') { assert_predicate(config, :filled?) }
     it('has no problem') { assert_nil(config.problem) }
-    it('does not need to show help') { refute(config.need_help?) }
+    it('does not need to show help') { refute_predicate(config, :need_help?) }
 
     it 'has data' do
       assert_equal('key', config.secret_key)
@@ -30,9 +30,9 @@ describe XomqConfig do
 
     after { ENV.replace @real_env }
 
-    it('is filled') { assert(config.filled?) }
+    it('is filled') { assert_predicate(config, :filled?) }
     it('has no problem') { assert_nil(config.problem) }
-    it('does not need to show help') { refute(config.need_help?) }
+    it('does not need to show help') { refute_predicate(config, :need_help?) }
 
     it 'has data' do
       assert_equal('key', config.secret_key)
@@ -58,9 +58,9 @@ describe XomqConfig do
       ARGV.replace @real_argv
     end
 
-    it('is filled') { assert(config.filled?) }
+    it('is filled') { assert_predicate(config, :filled?) }
     it('has no problem') { assert_nil(config.problem) }
-    it('does not need to show help') { refute(config.need_help?) }
+    it('does not need to show help') { refute_predicate(config, :need_help?) }
 
     it 'has data' do
       assert_equal('real_key', config.secret_key)
@@ -71,10 +71,16 @@ describe XomqConfig do
   describe 'without data' do
     let(:config) { XomqConfig.new }
 
-    it 'has problem' do
+    before do
+      @real_env = ENV.to_h
+      ENV.replace({})
+
       config.process!
-      refute_nil(config.problem)
     end
+
+    after { ENV.replace @real_env }
+
+    it('has a problem') { refute_nil(config.problem) }
   end
 
   describe 'when help requested by user' do
@@ -89,10 +95,7 @@ describe XomqConfig do
 
     after { ARGV.replace @real_argv }
 
-    it 'does need to show help' do
-      config.process!
-      assert(config.need_help?)
-    end
+    it('does need to show help') { assert_predicate(config, :need_help?) }
   end
 end
 
